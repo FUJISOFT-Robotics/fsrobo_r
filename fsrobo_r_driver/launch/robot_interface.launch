@@ -1,0 +1,89 @@
+<launch>
+
+  <!-- This launch file provides a socket-based connection to industrial robots
+       that implement the standard ROS Industrial simple_message protocol.
+	   *** Motion control is implemented by STREAMING path data to the robot ***
+           (for DOWNLOAD-based path-control, use a different launch file)
+
+       Several nodes are started, to supply both low-level robot communication
+       and higher-level actionlib support:
+         - robot_state : publishes current joint positions and robot state data
+         - motion_streaming_interface : command robot motion by sending motion points to robot
+         - joint_trajectory_action : actionlib interface to control robot motion
+
+    Usage:
+      robot_interface_streaming.launch robot_ip:=<value>
+  -->
+
+  <arg name="robot_name" default="/" />
+  <arg name="robot_mode" default="" />
+  <arg name="single_mode" value="$(eval arg('robot_mode')=='')" />
+  <arg name="remote" default="False" />
+  <arg name="address" default="" />
+  <arg name="env-loader" default="" />
+  <arg name="user" default="rosusr" />
+  <arg name="password" default="" />
+  <!-- robot_ip: IP-address of the robot's socket-messaging server -->
+  <arg name="robot_ip" />
+
+  <machine if="$(arg remote)" name="adapter" address="$(arg address)" env-loader="$(arg env-loader)" default="true" user="$(arg user)" password="$(arg password)" />
+
+  <group ns="$(arg robot_name)">
+    <arg name="moveit_config_package" value="fsrobo_r_$(arg robot_mode)_moveit_config" />
+    <group unless="$(arg single_mode)">
+      <!--rosparam command="load" file="$(eval find(moveit_config_package) + '/config/joint_names_fsrobo_r.yaml')" /-->
+      <!--rosparam command="load" file="$(find fsrobo_r_moveit_config)/config/joint_names_fsrobo_r.yaml" /-->
+      <rosparam param="controller_joint_names" subst_value="true">
+        ['$(arg robot_name)/Joint1',
+        '$(arg robot_name)/Joint2',
+        '$(arg robot_name)/Joint3',
+        '$(arg robot_name)/Joint4',
+        '$(arg robot_name)/Joint5',
+        '$(arg robot_name)/Joint6']
+      </rosparam>
+
+      <!--remap from="/$(arg robot_name)/joint_states" to="/joint_states" /-->
+      <node pkg="topic_tools" type="relay" name="$(anon relay)" args="joint_states /joint_states" />
+    </group>
+    <group if="$(arg single_mode)">
+      <!--rosparam command="load" file="$(find fsrobo_r_moveit_config)/config/joint_names_fsrobor_r.yaml" /-->
+      <rosparam param="controller_joint_names" subst_value="true">
+        ['Joint1', 'Joint2', 'Joint3', 'Joint4', 'Joint5', 'Joint6']
+      </rosparam>
+    </group>
+  
+    <!-- copy the specified IP address to the Parameter Server, for use by nodes below -->
+    <param name="robot_ip_address" type="str" value="$(arg robot_ip)"/>
+  
+    <!-- robot_state: publishes joint positions and robot-state data
+                     (from socket connection to robot) -->
+    <node pkg="fsrobo_r_driver" type="robot_state" name="robot_state" output="screen"/>
+  
+    <!-- motion_streaming_interface: sends robot motion commands by STREAMING path to robot
+                                    (using socket connection to robot) -->
+    <node pkg="fsrobo_r_driver" type="motion_streaming_interface" name="motion_streaming_interface" output="screen">
+      <remap unless="$(arg single_mode)" from="/$(arg robot_name)/robot_description" to="/robot_description"/>
+    </node>
+  
+    <!-- joint_trajectory_action: provides actionlib interface for high-level robot control -->
+    <node pkg="fsrobo_r_driver" type="joint_trajectory_action" name="joint_trajectory_action" output="screen"/>
+
+    <!-- ik_server: provides IK service -->
+    <node pkg="fsrobo_r_driver" type="ik_service.py" name="ik_server"/>
+
+    <group unless="$(arg single_mode)">
+      <group ns="tool1">
+        <rosparam command="load" file="$(find fsrobo_r_driver)/config/$(arg robot_name)_tool1.yaml"/>
+        <node pkg="fsrobo_r_driver" type="io_gripper_action.py" name="io_gripper_action" output="screen"/>
+      </group>
+      <group ns="tool2">
+        <rosparam command="load" file="$(find fsrobo_r_driver)/config/$(arg robot_name)_tool2.yaml"/>
+        <node pkg="fsrobo_r_driver" type="io_gripper_action.py" name="io_gripper_action" output="screen"/>
+      </group>
+      <group ns="camera">
+        <rosparam command="load" file="$(find fsrobo_r_driver)/config/$(arg robot_name)_camera.yaml"/>
+      </group>
+    </group>
+
+  </group>
+</launch>
