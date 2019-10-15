@@ -10,6 +10,8 @@ for FSRobo-R robot</p>
   <author email="F-ROSROBO@fsi.co.jp">F-ROSROBO</author>
   <maintainer email="F-ROSROBO@fsi.co.jp">F-ROSROBO</maintainer>
   <license>BSD</license>
+  <url type="website">http://wiki.ros.org/fsrobo_r_description</url>
+
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roslaunch</build_depend>
   <run_depend>robot_state_publisher</run_depend>

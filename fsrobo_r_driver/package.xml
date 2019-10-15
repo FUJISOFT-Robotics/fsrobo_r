@@ -10,11 +10,7 @@
 
   <license>BSD</license>
 
-
-  <!-- Url tags are optional, but multiple are allowed, one per tag -->
-  <!-- Optional attribute type can be: website, bugtracker, or repository -->
-  <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/fsrobo_r_driver</url> -->
+  <url type="website">http://wiki.ros.org/fsrobo_r_driver</url>
 
   <!-- The *_depend tags are used to specify dependencies -->
   <!-- Dependencies can be catkin packages or system dependencies -->

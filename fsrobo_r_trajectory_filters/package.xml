@@ -7,6 +7,7 @@
   <author email="F-ROSROBO@fsi.co.jp">F-ROSROBO</author>
   <maintainer email="F-ROSROBO@fsi.co.jp">F-ROSROBO</maintainer>
   <license>BSD</license>
+  <url type="website">http://wiki.ros.org/fsrobo_r_trajectory_filters</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
