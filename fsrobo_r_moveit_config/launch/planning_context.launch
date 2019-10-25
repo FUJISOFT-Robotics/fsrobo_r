@@ -5,6 +5,9 @@
   <!-- The name of the parameter under which the URDF is loaded -->
   <arg name="robot_description" default="robot_description"/>
 
+  <!-- kinematics -->
+  <arg name="kinematics" default="default"/>
+
   <!-- Load universal robot description format (URDF) -->
   <param if="$(arg load_robot_description)" name="$(arg robot_description)" textfile="$(find fsrobo_r_description)/urdf/fsrobo_r.urdf"/>
 
@@ -18,7 +21,7 @@
 
   <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
   <group ns="$(arg robot_description)_kinematics">
-    <rosparam command="load" file="$(find fsrobo_r_moveit_config)/config/kinematics.yaml"/>
+    <rosparam command="load" file="$(find fsrobo_r_moveit_config)/config/$(arg kinematics)_kinematics.yaml"/>
   </group>
   
 </launch>
