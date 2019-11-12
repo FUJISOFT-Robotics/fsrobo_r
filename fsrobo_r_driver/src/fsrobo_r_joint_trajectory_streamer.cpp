@@ -186,6 +186,13 @@ void FSRoboRJointTrajectoryStreamer::streamingThread()
         break;
       }
 
+      if (this->current_point_ == 0 && (int)this->current_traj_.size() > 1)
+      {
+        ROS_INFO("First trajectory remove");
+        this->current_point_++;
+        break;
+      }
+
       if (!this->connection_->isConnected())
       {
         ROS_DEBUG("Robot disconnected.  Attempting reconnect...");
