@@ -53,8 +53,12 @@ class RobotController:
         else:
             return None
 
-    def move(self, joint):
-        return self._api.qjmove(*joint) == 0
+    def move(self, joint, speed=None):
+        if speed is None:
+            params = joint
+        else:
+            params = joint + [speed]
+        return self._api.qjmove(*params) == 0
 
     def abort(self):
         return self._api.abortm() == 0

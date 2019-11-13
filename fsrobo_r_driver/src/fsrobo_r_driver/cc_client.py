@@ -68,11 +68,12 @@ class CCClient:
     def __init__(self, ip_address=_SOCKET_IP_ADDRESS):
         # ソケットを作成してデータの送受信を実施
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         self._sock.connect((ip_address, self._SOCKET_PORT_NUMBER))
         #self.open()
 
     def _send_data(self, send_data, return_data = {}):
-        print "_send_data execution"
+        #print "_send_data execution"
         self._sock.sendall(send_data)
         # ティーチからの送信データを受信
         rec_msg = self._sock.recv(self._SOCKET_RECV_BUFF_SIZE)
@@ -115,7 +116,7 @@ class CCClient:
         return_data = self._send_data(send_data)
         return return_data
 
-    def qjmove(self, ax1, ax2, ax3, ax4, ax5, ax6):
+    def qjmove(self, ax1, ax2, ax3, ax4, ax5, ax6, speed=None):
         print "qjmove execution"
         data = {
             "J1": ax1,
@@ -125,6 +126,8 @@ class CCClient:
             "J5": ax5,
             "J6": ax6
         }
+        if speed is not None:
+            data['SP'] = speed
         send_data = self._create_send_data(self._CMD_QJMOVE, data)
         return_data = self._send_data(send_data)
         print "qjmove success"
@@ -141,14 +144,14 @@ class CCClient:
         return return_data
 
     def syssts(self, stat_type, output_data):
-        print "syssts execution"
+        #print "syssts execution"
         data = {
             "TYPE": stat_type
         }
         send_data = self._create_send_data(self._CMD_SYSSTS, data)
         return_data = self._send_data(send_data, output_data)
-        print "syssts success"
-        print "return:" + str(return_data)
+        #print "syssts success"
+        #print "return:" + str(return_data)
         return return_data
 
     def set_jspeed(self, s):

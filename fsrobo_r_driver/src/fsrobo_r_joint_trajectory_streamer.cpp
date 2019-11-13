@@ -50,17 +50,8 @@ bool FSRoboRJointTrajectoryStreamer::init(SmplMsgConnection *connection, const s
   ROS_INFO("Unlocking mutex");
   this->mutex_.unlock();
 
-
-  io_ctrl_.init(connection);
-  this->srv_set_io = this->node_.advertiseService("set_io", &FSRoboRJointTrajectoryStreamer::setIOCB, this);
-
   robot_program_executor_.init(connection);
   this->srv_execute_robot_program = this->node_.advertiseService("execute_robot_program", &FSRoboRJointTrajectoryStreamer::executeRobotProgramCB, this);
-
-  robot_configurator_.init(connection);
-  this->srv_set_posture = this->node_.advertiseService("set_posture", &FSRoboRJointTrajectoryStreamer::setPostureCB, this);
-  this->srv_get_posture = this->node_.advertiseService("get_posture", &FSRoboRJointTrajectoryStreamer::getPostureCB, this);
-  this->srv_set_tool_offset = this->node_.advertiseService("set_tool_offset", &FSRoboRJointTrajectoryStreamer::setToolOffsetCB, this);
 
   return rtn;
 }
@@ -200,36 +191,8 @@ void FSRoboRJointTrajectoryStreamer::streamingThread()
         break;
       }
 
-      // check bufer filling
-      {
-        SimpleMessage req, res;
-        fsrobo_r_driver::simple_message::sys_stat::SysStat stat;
-        fsrobo_r_driver::simple_message::sys_stat_reply::SysStatReply stat_reply;
-        stat.init(fsrobo_r_driver::simple_message::sys_stat::SysStatType::MOTION_REQUEST, 0);
-        fsrobo_r_driver::simple_message::sys_stat_message::SysStatMessage stat_msg;
-        fsrobo_r_driver::simple_message::sys_stat_reply_message::SysStatReplyMessage stat_reply_msg;
-        stat_msg.init(stat);
-        stat_msg.toRequest(req);
-        if(!this->connection_->sendAndReceiveMsg(req, res)) {
-          ROS_WARN("Failed to send SysStat Request message");
-          break;
-        }
-        stat_reply_msg.init(res);
-
-        stat_reply.copyFrom(stat_reply_msg.reply_);
-        // don't send move command if buffer is full.
-        if (stat_reply.getResult() >= 4) {
-          ROS_WARN("using buffer size: %d", stat_reply.getResult());
-          break;
-        }
-
-      }
-
       jtpMsg = this->current_traj_[this->current_point_];
       jtpMsg.toRequest(msg);
-      {
-        ros::Duration x(jtpMsg.point_.getDuration());
-      }
 
       ROS_DEBUG("Sending joint trajectory point");
       if (this->connection_->sendAndReceiveMsg(msg, reply, false))
@@ -263,37 +226,6 @@ void FSRoboRJointTrajectoryStreamer::trajectoryStop()
 }
 
 
-bool FSRoboRJointTrajectoryStreamer::setIOCB(fsrobo_r_msgs::SetIO::Request &req, fsrobo_r_msgs::SetIO::Response &res)
-{
-  ROS_WARN("SetIO!");
-
-  industrial::shared_types::shared_int io_val = -1;
-
-  std::stringstream ss;
-  std::vector<industrial::shared_types::shared_int> data;
-  for (int x : req.data)
-  {
-    data.push_back(x);
-    ss << x;
-    ss << " ";
-  }
-  ROS_WARN("%s", ss.str().c_str());
-
-  this->mutex_.lock();
-  bool result = io_ctrl_.setIO(req.fun, req.address, data);
-  this->mutex_.unlock();
-
-  res.success = result;
-
-  if (!result)
-  {
-    ROS_ERROR("Writing IO element %d failed", req.address);
-    return false;
-  }
-
-  return true;
-}
-
 bool FSRoboRJointTrajectoryStreamer::executeRobotProgramCB(fsrobo_r_msgs::ExecuteRobotProgram::Request &req, fsrobo_r_msgs::ExecuteRobotProgram::Response &res)
 {
   ROS_WARN("ExecuteRobotProgram!");
@@ -316,70 +248,6 @@ bool FSRoboRJointTrajectoryStreamer::executeRobotProgramCB(fsrobo_r_msgs::Execut
   return true;
 }
 
-bool FSRoboRJointTrajectoryStreamer::setPostureCB(fsrobo_r_msgs::SetPosture::Request &req, fsrobo_r_msgs::SetPosture::Response &res)
-{
-  ROS_WARN("SetPosture!");
-
-  bool exec_result;
-
-  this->mutex_.lock();
-  bool send_result = robot_configurator_.setPosture(req.posture, exec_result);
-  this->mutex_.unlock();
-
-  bool result = send_result && exec_result;
-
-  if (!result)
-  {
-    ROS_ERROR("Setting Posture failed");
-    return false;
-  }
-
-  return true;
-}
-
-bool FSRoboRJointTrajectoryStreamer::getPostureCB(fsrobo_r_msgs::GetPosture::Request &req, fsrobo_r_msgs::GetPosture::Response &res)
-{
-  ROS_WARN("GetPosture!");
-
-  bool exec_result;
-  industrial::shared_types::shared_int posture;
-
-  this->mutex_.lock();
-  bool send_result = robot_configurator_.getPosture(posture, exec_result);
-  this->mutex_.unlock();
-
-  res.posture = posture;
-  bool result = send_result && exec_result;
-
-  if (!result)
-  {
-    ROS_ERROR("Getting posture failed");
-    return false;
-  }
-
-  return true;
-}
-
-bool FSRoboRJointTrajectoryStreamer::setToolOffsetCB(fsrobo_r_msgs::SetToolOffset::Request &req, fsrobo_r_msgs::SetToolOffset::Response &res)
-{
-  ROS_WARN("SetToolOffset!");
-
-  bool exec_result;
-
-  this->mutex_.lock();
-  bool send_result = robot_configurator_.setToolOffset(req.origin.x, req.origin.y, req.origin.z, req.rotation.z, req.rotation.y, req.rotation.x, exec_result);
-  this->mutex_.unlock();
-
-  bool result = send_result && exec_result;
-
-  if (!result)
-  {
-    ROS_ERROR("Setting tool offset failed");
-    return false;
-  }
-
-  return true;
-}
 
 } // namespace joint_trajectory_streamer
 } // namespace fsrobo_r_driver

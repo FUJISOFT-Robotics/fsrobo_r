@@ -30,34 +30,60 @@
 
 import SocketServer
 import socket
-from struct import pack, unpack
-import sys
+import threading
+import Queue
 from simple_message import SimpleMessageSocket, \
-    SimpleMessageType, JointTrajPtReplyMessage, CommunicationType, ReplyCode, SimpleMessage, SpecialSequence, \
-    SetIOReplyMessage, IOFunctionType, ExecuteProgramReplyMessage, \
-    SetPostureReplyMessage, GetPostureReplyMessage, \
-    SysStatReplyMessage, \
-    SetToolOffsetReplyMessage
+    SimpleMessageType, JointTrajPtReplyMessage, ReplyCode, \
+    SpecialSequence, ExecuteProgramReplyMessage
 from robot_controller import RobotController
 import math
 
 HOST, PORT = "0.0.0.0", 11000
+
+class MotionThread(threading.Thread):
+    def __init__(self, ctl):
+        super(MotionThread, self).__init__()
+        self._ctl = ctl
+        self._q_move = Queue.Queue()
+        self._q_abort = Queue.Queue()
+        self.daemon = True
+
+    def run(self):
+        while True:
+            try:
+                self._q_abort.get(True, 0.001)
+                self._ctl.abort()
+                with self._q_move.mutex:
+                    self._q_move.queue.clear()
+            except Queue.Empty:
+                pass
+            used_buffer_size = self._ctl.sys_stat(5)
+            if used_buffer_size < 4:
+                try:
+                    joints, speed = self._q_move.get(False)
+                    self._ctl.move(joints, speed)
+                except Queue.Empty:
+                    pass
+
+    def move(self, joints, speed):
+        self._q_move.put((joints, speed))
+
+    def abort(self):
+        self._q_abort.put(True)
 
 class MotionTCPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         #client = self.request
         sock = SimpleMessageSocket(self.request)
         address = self.client_address[0]
+        print('connected with {}'.format(address))
         ctl = RobotController()
+        motion_thread = MotionThread(ctl)
+        motion_thread.start()
 
         msg_handlers = {
             SimpleMessageType.JOINT_TRAJ_PT: self.on_joint_traj_pt,
-            SimpleMessageType.SET_IO: self.on_set_io,
-            SimpleMessageType.EXECUTE_PROGRAM: self.on_execute_program,
-            SimpleMessageType.SET_POSTURE: self.on_set_posture,
-            SimpleMessageType.GET_POSTURE: self.on_get_posture,
-            SimpleMessageType.SYS_STAT: self.on_sys_stat,
-            SimpleMessageType.SET_TOOL_OFFSET: self.on_set_tool_offset
+            SimpleMessageType.EXECUTE_PROGRAM: self.on_execute_program
         }
 
         try:
@@ -67,51 +93,28 @@ class MotionTCPHandler(SocketServer.BaseRequestHandler):
                 msg_handler = msg_handlers.get(
                     recv_msg.msg_type, self.on_unkown_message)
 
-                reply_msg = msg_handler(ctl, recv_msg)
+                reply_msg = msg_handler(ctl, recv_msg, motion_thread)
                 sock.send(reply_msg)
         finally:
             ctl.close()
 
-    def on_joint_traj_pt(self, ctl, recv_msg):
+    def on_joint_traj_pt(self, ctl, recv_msg, motion_thread):
         joint_deg = map(math.degrees, recv_msg.joint_data[:6])
-        print(recv_msg.sequence)
-        print(recv_msg.joint_data)
+        #print(recv_msg.sequence)
+        #print(recv_msg.joint_data)
 
-        result = True
         if recv_msg.sequence == SpecialSequence.STOP_TRAJECTORY:
-            result = ctl.abort()
+            motion_thread.abort()
             print("abort move command")
         else:
-            ctl.set_speed(recv_msg.velocity)
-            result = ctl.move(joint_deg)
+            motion_thread.move(joint_deg, recv_msg.velocity * 100)
 
         reply_msg = JointTrajPtReplyMessage()
-        if not result:
-            print("move error")
-        reply_msg.reply_code = ReplyCode.SUCCESS if result else ReplyCode.FAILURE
+        reply_msg.reply_code = ReplyCode.SUCCESS
 
         return reply_msg
 
-    def on_set_io(self, ctl, recv_msg):
-        print(recv_msg.fun)
-        print(recv_msg.address)
-        print(recv_msg.data_size)
-        print(recv_msg.data)
-
-        if recv_msg.fun == IOFunctionType.SET_DIGITAL_OUT:
-            result = ctl.set_dio(
-                recv_msg.address, recv_msg.data[0:recv_msg.data_size])
-        elif recv_msg.fun == IOFunctionType.SET_ADC_MODE:
-            result = ctl.set_adc_mode(recv_msg.address, recv_msg.data[0])
-
-        reply_msg = SetIOReplyMessage()
-        reply_msg.reply_code = ReplyCode.SUCCESS if result else ReplyCode.FAILURE
-        reply_msg.result = reply_msg.Result.SUCCESS if result else reply_msg.Result.FAILURE
-        print("received: I/O message")
-
-        return reply_msg
-
-    def on_execute_program(self, ctl, recv_msg):
+    def on_execute_program(self, ctl, recv_msg, motion_thread):
         print(recv_msg.name)
         print(recv_msg.param)
         print("received: Execute program message")
@@ -124,56 +127,7 @@ class MotionTCPHandler(SocketServer.BaseRequestHandler):
 
         return reply_msg
 
-    def on_set_posture(self, ctl, recv_msg):
-        print(recv_msg.posture)
-        print("received: Set posture message")
-
-        result = ctl.set_posture(recv_msg.posture)
-
-        reply_msg = SetPostureReplyMessage()
-        reply_msg.reply_code = ReplyCode.SUCCESS if result else ReplyCode.FAILURE
-
-        return reply_msg
-
-    def on_get_posture(self, ctl, recv_msg):
-        print("received: Get posture message")
-
-        posture = ctl.get_posture()
-
-        reply_msg = GetPostureReplyMessage()
-        if posture == None:
-            reply_msg.reply_code = ReplyCode.FAILURE
-        else:
-            reply_msg.reply_code = ReplyCode.SUCCESS
-            reply_msg.posture = posture
-
-        return reply_msg
-
-    def on_sys_stat(self, ctl, recv_msg):
-        print(recv_msg.stat_type)
-
-        result = ctl.sys_stat(recv_msg.stat_type)
-
-        reply_msg = SysStatReplyMessage()
-        reply_msg.reply_code = ReplyCode.SUCCESS if result else ReplyCode.FAILURE
-        print("result: {}".format(result))
-        reply_msg.result = result
-        print("received: sys_stat message")
-
-        return reply_msg
-
-    def on_set_tool_offset(self, ctl, recv_msg):
-        print("received: Set tool offset message")
-        result = ctl.set_tool_offset(recv_msg.x, recv_msg.y, recv_msg.z,
-            recv_msg.rz, recv_msg.ry, recv_msg.rx)
-        print("result: {}".format(result))
-        
-        reply_msg = SetToolOffsetReplyMessage()
-        reply_msg.reply_code = SetToolOffsetReplyMessage.Result.SUCCESS if result else SetToolOffsetReplyMessage.Result.FAILURE
-
-        return reply_msg
-
-    def on_unkown_message(self, ctl, recv_msg):
+    def on_unkown_message(self, ctl, recv_msg, motion_thread):
         raise NotImplementedError(
             "Unknown msg_type: {}".format(recv_msg.msg_type))
 

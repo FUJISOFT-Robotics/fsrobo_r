@@ -38,6 +38,9 @@
     <!-- joint_trajectory_action: provides actionlib interface for high-level robot control -->
     <node pkg="fsrobo_r_driver" type="joint_trajectory_action" name="joint_trajectory_action" output="screen"/>
 
+    <!-- robot_service_interface: sends robot commands to robot (using socket connection to robot) -->
+    <node pkg="fsrobo_r_driver" type="robot_service_interface" name="robot_service_interface" output="screen"/>
+
     <!-- ik_server: provides IK service -->
     <node pkg="fsrobo_r_driver" type="ik_service.py" name="ik_server"/>
 

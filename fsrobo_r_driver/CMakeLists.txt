@@ -137,6 +137,7 @@ set(SRC_FILES
   src/fsrobo_r_joint_trajectory_action.cpp
   src/fsrobo_r_joint_trajectory_streamer.cpp
   src/fsrobo_r_robot_state_interface.cpp
+  src/fsrobo_r_robot_service_interface.cpp
   src/io_state_relay_handler.cpp
   src/io_control.cpp
   src/robot_program_executor.cpp
@@ -223,6 +224,18 @@ set_target_properties(
   ${PROJECT_NAME}_motion_streaming_interface
   PROPERTIES OUTPUT_NAME motion_streaming_interface PREFIX "")
 
+add_executable(${PROJECT_NAME}_robot_service_interface
+  src/fsrobo_r_robot_service_interface_node.cpp
+)
+target_link_libraries(${PROJECT_NAME}_robot_service_interface
+  industrial_robot_client
+  simple_message
+  fsrobo_r_driver
+  ${catkin_LIBRARIES})
+set_target_properties(
+  ${PROJECT_NAME}_robot_service_interface
+  PROPERTIES OUTPUT_NAME robot_service_interface PREFIX "")
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -282,6 +295,7 @@ install(TARGETS
 install(TARGETS
   ${PROJECT_NAME}_joint_trajectory_action
   ${PROJECT_NAME}_motion_streaming_interface
+  ${PROJECT_NAME}_robot_service_interface
   ${PROJECT_NAME}_robot_state
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

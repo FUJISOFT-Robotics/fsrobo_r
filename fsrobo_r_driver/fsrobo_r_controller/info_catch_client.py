@@ -62,15 +62,13 @@ class JSONSocket(object):
                     recv_data = self._sock.recv(self.BUFFER_SIZE)
                     if (len(recv_data) == 0):
                         raise socket.error('recv error')
-                    #print(recv_data)
-
-                    # XXX trailing null char causes ValueError. Should fix server?
-                    if recv_data[-1] == '\0':
-                        recv_data = recv_data[:-1]
 
                     self._recv_buffer += recv_data
                     need_recv = False
                 else:
+                    # XXX leading null char causes ValueError. Should fix server?
+                    self._recv_buffer = self._recv_buffer.strip('\0')
+
                     data, index = self._decoder.raw_decode(self._recv_buffer)
                     self._recv_buffer = self._recv_buffer[index:]
                     #print('OK!:{}:{}:'.format(self._recv_buffer, self._recv_buffer.encode('hex')))
@@ -78,6 +76,7 @@ class JSONSocket(object):
             except ValueError as e:
                 #print(e)
                 #print(self._recv_buffer)
+                #print(self._recv_buffer.encode('hex'))
                 need_recv = True
 
 class InfoCatchClient(object):

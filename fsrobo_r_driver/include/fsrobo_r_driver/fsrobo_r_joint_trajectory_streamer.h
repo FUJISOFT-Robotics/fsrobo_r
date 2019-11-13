@@ -40,14 +40,8 @@
 #include "fsrobo_r_driver/simple_message/messages/sys_stat_message.h"
 #include "fsrobo_r_driver/simple_message/sys_stat_reply.h"
 #include "fsrobo_r_driver/simple_message/messages/sys_stat_reply_message.h"
-#include "fsrobo_r_msgs/SetIO.h"
-#include "fsrobo_r_driver/io_control.h"
 #include "fsrobo_r_msgs/ExecuteRobotProgram.h"
 #include "fsrobo_r_driver/robot_program_executor.h"
-#include "fsrobo_r_msgs/SetPosture.h"
-#include "fsrobo_r_msgs/GetPosture.h"
-#include "fsrobo_r_driver/robot_configurator.h"
-#include "fsrobo_r_msgs/SetToolOffset.h"
 
 using industrial::simple_message::SimpleMessage;
 
@@ -58,9 +52,7 @@ namespace joint_trajectory_streamer
 using industrial_robot_client::joint_trajectory_interface::JointTrajectoryInterface;
 using industrial::joint_traj_pt_message::JointTrajPtMessage;
 using industrial::smpl_msg_connection::SmplMsgConnection;
-using fsrobo_r_driver::io_control::IOControl;
 using fsrobo_r_driver::robot_program_executor::RobotProgramExecutor;
-using fsrobo_r_driver::robot_configurator::RobotConfigurator;
 
 namespace TransferStates
 {
@@ -121,21 +113,10 @@ protected:
   ros::Time streaming_start_;
   int min_buffer_size_;
 
-  ros::ServiceServer srv_set_io;
   ros::ServiceServer srv_execute_robot_program;
-  ros::ServiceServer srv_set_posture;
-  ros::ServiceServer srv_get_posture;
-  ros::ServiceServer srv_set_tool_offset;
-
-  IOControl io_ctrl_;
   RobotProgramExecutor robot_program_executor_;
-  RobotConfigurator robot_configurator_;
 
-  bool setIOCB(fsrobo_r_msgs::SetIO::Request &req, fsrobo_r_msgs::SetIO::Response &res);
   bool executeRobotProgramCB(fsrobo_r_msgs::ExecuteRobotProgram::Request &req, fsrobo_r_msgs::ExecuteRobotProgram::Response &res);
-  bool setPostureCB(fsrobo_r_msgs::SetPosture::Request &req, fsrobo_r_msgs::SetPosture::Response &res);
-  bool getPostureCB(fsrobo_r_msgs::GetPosture::Request &req, fsrobo_r_msgs::GetPosture::Response &res);
-  bool setToolOffsetCB(fsrobo_r_msgs::SetToolOffset::Request &req, fsrobo_r_msgs::SetToolOffset::Response &res);
 };
 
 } // namespace joint_trajectory_streamer

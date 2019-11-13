@@ -14,6 +14,10 @@
         name="robot_state"
         respawn="false" output="screen" cwd="node" />
   <node pkg="fsrobo_r_driver"
+        type="robot_service_interface"
+        name="robot_service_interface"
+        respawn="false" output="screen" cwd="node" />
+  <node pkg="fsrobo_r_driver"
         type="ik_service.py"
         name="ik_service"
         respawn="false" output="screen" cwd="node" />
