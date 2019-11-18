@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>fsrobo_r_msgs</name>
-  <version>0.7.0</version>
+  <version>0.7.1</version>
   <description>The fsrobo_r_msgs package</description>
 
   <author email="F-ROSROBO@fsi.co.jp">F-ROSROBO</author>

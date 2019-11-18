@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>fsrobo_r</name>
-  <version>0.7.0</version>
+  <version>0.7.1</version>
   <description>Meta package for FSRobo-R</description>
 
   <author email="F-ROSROBO@fsi.co.jp">F-ROSROBO</author>

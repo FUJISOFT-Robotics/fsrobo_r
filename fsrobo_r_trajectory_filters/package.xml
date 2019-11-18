@@ -1,6 +1,6 @@
 <package>
   <name>fsrobo_r_trajectory_filters</name>
-  <version>0.7.0</version>
+  <version>0.7.1</version>
   <description>
     plugins for filtering trajectories.
   </description>
