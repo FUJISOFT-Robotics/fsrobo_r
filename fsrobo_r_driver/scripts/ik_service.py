@@ -36,6 +36,7 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKResponse
 from fsrobo_r_msgs.srv import SetToolOffset, SetToolOffsetRequest
 from fsrobo_r_driver.geometry_util import GeometryUtil
 from fsrobo_r_driver.cc_client import CCClient
+import time
 
 
 class RobotControllerInterface(object):
@@ -89,19 +90,32 @@ class RobotControllerInterface(object):
 class RobootToolUtil(object):
     def __init__(self):
         self._gu = GeometryUtil()
-        self._rc = None
+        self._init_commander()
         self._tool_base_link = rospy.get_namespace() + 'Link6'
 
-    @property
-    def rc(self):
-        if self._rc is None:
-            self._rc = moveit_commander.RobotCommander()
-            return self._rc
-        else:
-            return self._rc
+    def _init_commander(self):
+        rospy.loginfo('Wait for robot description')
+        while True:
+            if rospy.search_param('/robot_description') is not None \
+                and rospy.search_param('/robot_description_semantic') is not None:
+                break
+            time.sleep(1)
+        print('-----------------')
+        self._rc = moveit_commander.RobotCommander()
+        print('-----------------')
+        rospy.loginfo('Preload group instance')
+        while True:
+            try:
+                for group_name in self._rc.get_group_names():
+                    self._rc.get_group(group_name)
+                break
+            except RuntimeError as e:
+                rospy.logwarn(e)
+            time.sleep(1)
+        print('-----------------')
 
     def get_tool_offset(self, group_name):
-        group = self.rc.get_group(group_name)
+        group = self._rc.get_group(group_name)
 
         ee_link = group.get_end_effector_link()
         pose = self._gu.get_current_pose(self._tool_base_link, ee_link)
