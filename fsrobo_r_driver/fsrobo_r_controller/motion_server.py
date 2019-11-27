@@ -107,7 +107,10 @@ class MotionTCPHandler(SocketServer.BaseRequestHandler):
             motion_thread.abort()
             print("abort move command")
         else:
-            motion_thread.move(joint_deg, recv_msg.velocity * 100)
+            speed = recv_msg.velocity * 100
+            if speed < 0.1:
+                speed = 0.1
+            motion_thread.move(joint_deg, speed)
 
         reply_msg = JointTrajPtReplyMessage()
         reply_msg.reply_code = ReplyCode.SUCCESS
