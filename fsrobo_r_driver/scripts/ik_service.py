@@ -37,6 +37,7 @@ from fsrobo_r_msgs.srv import SetToolOffset, SetToolOffsetRequest
 from fsrobo_r_driver.geometry_util import GeometryUtil
 from fsrobo_r_driver.cc_client import CCClient
 import time
+import threading
 
 
 class RobotControllerInterface(object):
@@ -139,6 +140,8 @@ class IKService:
         self._tool_offset_cache = {}
         self._last_tool_offset = []
 
+        self._lock = threading.Lock()
+
     def update_tool_offset(self, group_name):
         if group_name in self._tool_offset_cache:
             tool_offset = self._tool_offset_cache[group_name]
@@ -151,37 +154,38 @@ class IKService:
             self._last_tool_offset = tool_offset
 
     def handle_solve_ik(self, req):
-        #print("-----------request!")
-        pos = req.ik_request.pose_stamped.pose.position
-        ori = req.ik_request.pose_stamped.pose.orientation
-        group_name = req.ik_request.group_name
+        with self._lock:
+            #print("-----------request!")
+            pos = req.ik_request.pose_stamped.pose.position
+            ori = req.ik_request.pose_stamped.pose.orientation
+            group_name = req.ik_request.group_name
 
-        #print(pos)
-        #print(ori)
-        #print('group_name: {}'.format(group_name))
+            #print(pos)
+            #print(ori)
+            #print('group_name: {}'.format(group_name))
 
-        res = GetPositionIKResponse()
-        res.solution.joint_state.header = req.ik_request.pose_stamped.header
+            res = GetPositionIKResponse()
+            res.solution.joint_state.header = req.ik_request.pose_stamped.header
 
-        self.update_tool_offset(group_name)
-        joint = self._rb.solve_ik(pos, ori)
+            self.update_tool_offset(group_name)
+            joint = self._rb.solve_ik(pos, ori)
 
-        if len(joint) != 0:
-            #print("pose!")
-            #print(req.ik_request.pose_stamped.pose)
-            #print("req!")
-            #print(req.ik_request)
-            #print("joint!")
-            #print(joint)
-            #print("success!")
-            res.solution.joint_state.name = self.joint_names
-            res.solution.joint_state.position = joint
-            res.error_code.val = res.error_code.SUCCESS
-            print(res.solution.joint_state.position)
-        else:
-            res.error_code.val = res.error_code.NO_IK_SOLUTION
+            if len(joint) != 0:
+                #print("pose!")
+                #print(req.ik_request.pose_stamped.pose)
+                #print("req!")
+                #print(req.ik_request)
+                #print("joint!")
+                #print(joint)
+                #print("success!")
+                res.solution.joint_state.name = self.joint_names
+                res.solution.joint_state.position = joint
+                res.error_code.val = res.error_code.SUCCESS
+                print(res.solution.joint_state.position)
+            else:
+                res.error_code.val = res.error_code.NO_IK_SOLUTION
 
-        return res
+            return res
 
     def run(self):
         rospy.Service('solve_ik', GetPositionIK, self.handle_solve_ik)
