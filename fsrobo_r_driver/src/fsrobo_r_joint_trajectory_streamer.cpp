@@ -95,6 +95,21 @@ void FSRoboRJointTrajectoryStreamer::jointTrajectoryCB(const trajectory_msgs::Jo
   if (!trajectory_to_msgs(msg, &new_traj_msgs))
     return;
 
+  // calculate average velocity between waypoints
+  int pos = 0;
+  const float coefficient = 0.5;
+  for(auto itr = new_traj_msgs.begin(); itr != new_traj_msgs.end(); ++itr){
+    if(pos != 0){
+      float vel = itr->point_.getVelocity();
+      float prev_vel = (itr - 1)->point_.getVelocity();
+      ROS_DEBUG("prev_vel[%d] => %f, vel[%d] => %f", pos, prev_vel, pos, vel);
+      float new_vel = prev_vel + coefficient*(vel - prev_vel);
+      ROS_DEBUG("new_vel[%d] => %f", pos, new_vel);
+      itr->point_.setVelocity(new_vel);
+    }
+    pos++;
+  }
+
   // send command messages to robot
   send_to_robot(new_traj_msgs);
 }
